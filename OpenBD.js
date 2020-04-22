@@ -5,6 +5,7 @@ const request = require("request");
 module.exports = class OpenBD {
   constructor() {
     this._isbn = "";
+    this._imagePath = "";
     this.HOST = "https://api.openbd.jp/v1/get";
   }
 
@@ -16,24 +17,29 @@ module.exports = class OpenBD {
     return this._isbn;
   }
 
+  set imagePath(path) {
+    this._imagePath = path;
+  }
+
+  get imagePath() {
+    return this._imagePath;
+  }
+
   async search(isbn) {
     this.isbn = isbn;
     const url = this.HOST + "?isbn=" + this.isbn + "&pretty";
     const res = await fetch(url);
     const ary = await res.json();
     const data = ary[0];
-    const title =
-      data.onix.DescriptiveDetail.TitleDetail.TitleElement.TitleText.content;
-    const coverurl = data.summary.cover;
 
-    return { title: title, coverurl: coverurl, isbn: isbn };
+    return data.summary;
   }
 
   async downloadCoverImage(isbn) {
     const res = await this.search(isbn);
 
     promiseFileDownload(res)
-      .then(promiseFileDownloadSuccess)
+      .then(promiseFileDownloadSuccess(this.imagePath))
       .catch(promiseFileDownloadFail);
 
     return res;
@@ -61,7 +67,12 @@ const extension = (contentType) => {
 const promiseFileDownload = (res) => {
   return new Promise((resolve, reject) => {
     const options = { encoding: null };
-    request.get(res.coverurl, options, (error, response, body) => {
+
+    if (!res.cover) {
+      reject({ error: `Cover is none; isbn: ${res.isbn}` });
+    }
+
+    request.get(res.cover, options, (error, response, body) => {
       if (error) {
         reject({ error: error });
       } else {
@@ -78,10 +89,12 @@ const promiseFileDownload = (res) => {
   });
 };
 
-const promiseFileDownloadSuccess = (res) => {
+const promiseFileDownloadSuccess = (path) => (res) => {
   const buffer = new Buffer.from(res.body);
   const contentType = res.header["content-type"];
-  const fileName = res.isbn + extension(contentType);
+
+  createDirectory(path);
+  const fileName = path + res.isbn + extension(contentType);
 
   writeFile(fileName, buffer);
 };
@@ -89,4 +102,10 @@ const promiseFileDownloadSuccess = (res) => {
 const promiseFileDownloadFail = (res) => {
   const errorMessage = res.error;
   console.log(errorMessage);
+};
+
+const createDirectory = (path) => {
+  if (!fs.existsSync(path)) {
+    fs.mkdirSync(path);
+  }
 };
