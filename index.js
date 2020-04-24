@@ -5,7 +5,7 @@ const openbd = new OpenBD();
 const shinkan = new Shinkan();
 
 (async () => {
-  openbd.imagePath = "downloadimage/";
+  openbd.imagePath = "public/downloadimage/";
 
   let isbns = shinkan.getShinkanData();
   isbns = isbns.slice(0, 4);
