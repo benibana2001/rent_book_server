@@ -12,8 +12,10 @@ const output = {
 (async () => {
   openbd.imagePath = output.downloadImagePath;
 
-  let isbns = shinkan.getShinkanData();
-  isbns = isbns.slice(0, 30);
+//   let isbns = shinkan.getShinkanData();
+//   isbns = isbns.slice(0, 30);
+  const isbns = shinkan.getShinkanData();
+
   console.log(isbns);
   const comicDatas = [];
 
