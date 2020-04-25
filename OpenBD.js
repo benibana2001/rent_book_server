@@ -7,6 +7,10 @@ module.exports = class OpenBD {
     this._isbn = "";
     this._imagePath = "";
     this.HOST = "https://api.openbd.jp/v1/get";
+
+    this.errMessage = {
+      noData: (payload) => `no data on ObenPD: ${payload}`,
+    };
   }
 
   set isbn(isbn) {
@@ -30,13 +34,31 @@ module.exports = class OpenBD {
     const url = this.HOST + "?isbn=" + this.isbn + "&pretty";
     const res = await fetch(url);
     const ary = await res.json();
+
+    /**
+     * @type {object}
+     */
     const data = ary[0];
+
+    const noDataOnOpenBD =
+      !data ||
+      typeof data !== "object" ||
+      !Object.prototype.hasOwnProperty.call(data, "summary");
+
+    if (noDataOnOpenBD) {
+      throw new Error(this.errMessage.noData(isbn));
+    }
 
     return data.summary;
   }
 
   async downloadCoverImage(isbn) {
-    const res = await this.search(isbn);
+    const res = await this.search(isbn).catch(handleError);
+
+    function handleError(err) {
+      console.log(err, "skip this entry");
+      throw new Error(err);
+    }
 
     promiseFileDownload
       .download(res)
@@ -57,26 +79,56 @@ module.exports = class OpenBD {
     };
 
     // if there is no file, create new one.
-    syncIO.checkExist(filepathname, () => {
-      syncIO.write(filepathname, "[]");
-    });
+    syncIO.checkExist(filepathname, createNewFile);
 
     syncIO.readAsJSON(filepathname, (json) => {
       // postscript to JSON
       json.push(bookdata);
       syncIO.write(filepathname, JSON.stringify(json));
-      console.log(`write is done: ${JSON.stringify(json)}`);
+      //   console.log(`write is done: ${JSON.stringify(json)}`);
+    });
+
+    function createNewFile() {
+      syncIO.write(filepathname, "[]");
+    }
+  }
+
+  alignJSON(filepathname) {
+    syncIO.readAsJSON(filepathname, (json) => {
+      for (let i = 0; i < json.length; i++) {
+        for (let j = json.length - 1; j > i; j--) {
+          const alignPublishDate =
+            Number(json[j].pubdate) < Number(json[j - 1].pubdate);
+          const alignISBN = json[j].isbn < json[j - 1].isbn;
+
+          if (alignPublishDate) {
+            const temp = json[j];
+            json[j] = json[j - 1];
+            json[j - 1] = temp;
+            continue;
+          }
+
+          if (alignISBN) {
+            const temp = json[j];
+            json[j] = json[j - 1];
+            json[j - 1] = temp;
+          }
+        }
+      }
+
+      syncIO.write(filepathname, JSON.stringify(json));
     });
   }
 };
 
 const syncIO = {
-  checkExist: (filePath, callback) => {
+  checkExist: (filePath, errCallback) => {
     try {
       fs.statSync(filePath);
     } catch (err) {
+      errCallback();
       console.log(`fs.stat err: ${err}`);
-      callback();
+      console.log("=> create new file");
     }
   },
 
@@ -161,6 +213,5 @@ const promiseFileDownload = {
 const writeFile = (fileName, buffer) => {
   fs.writeFile(fileName, buffer, (err) => {
     if (err) console.log(err);
-    else console.log(`success to write file`);
   });
 };

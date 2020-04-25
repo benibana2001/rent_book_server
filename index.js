@@ -13,16 +13,22 @@ const output = {
   openbd.imagePath = output.downloadImagePath;
 
   let isbns = shinkan.getShinkanData();
-  isbns = isbns.slice(0, 4);
+  isbns = isbns.slice(0, 30);
   console.log(isbns);
   const comicDatas = [];
 
   isbns.map(async (isbn) => {
-    const comicData = await openbd.downloadCoverImage(isbn);
+    const comicData =
+      (await openbd.downloadCoverImage(isbn).catch(handleError)) || null;
+
+    if (!comicData) return;
+
     comicDatas.push(comicData);
 
     openbd.writeJSON(output.generateJsonFile, comicData);
-  });
 
-  console.log(comicDatas);
+    function handleError(err) {
+      console.log(err);
+    }
+  });
 })();
