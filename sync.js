@@ -15,3 +15,4 @@ const callback = (err, stdout, stderr) => {
 };
 
 exec(`rsync ${options[0]} ${targetDir} ${serverName}:${serverDir}`, callback);
+// exec(`rsync ${targetDir}.htaccess ${serverName}:${serverDir}`, callback)
