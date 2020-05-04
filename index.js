@@ -6,7 +6,7 @@ const shinkan = new Shinkan();
 
 const output = {
   downloadImagePath: "public/downloadimage/",
-  generateJsonFile: "public/json/booklist.json",
+  generateJsonFile: "public/json/booklist_2020_05.json",
 };
 
 (async () => {

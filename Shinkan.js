@@ -1,4 +1,4 @@
-const shinkanData = require("./booklist_2020_04.json");
+const shinkanData = require("./data/booklist_2020_05.json");
 
 module.exports = class Shinkan {
   constructor() {
